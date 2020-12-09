@@ -148,6 +148,25 @@ class DocumentManager implements ObjectManager
     protected function __construct(Connection $conn = null, Configuration $config = null, EventManager $eventManager = null)
     {
         $this->config = $config ?: new Configuration();
+        
+        // CUSTOM change for gogocarto
+        // We use a nice hack, in doctrine_mongodb.yaml we are setting the default_database as follow
+        // "use_as_saas=true/name_of_the_database"
+        // if used as saas, the db name is changed based on the url
+        $useAsSaas = false;
+        $dbName = $this->config->getDefaultDB();
+        if (str_starts_with($dbName, 'use_as_saas=')) {
+            list($useAsSaas, $dbName) = explode('/', $this->config->getDefaultDB());
+            if ($useAsSaas == "use_as_saas=true" && isset($_SERVER["HTTP_HOST"]))
+            {
+                $exploded = explode('.', $_SERVER["HTTP_HOST"]);
+                $subdomain = $exploded[0];
+                $reservedDomains = ['dev', 'test', 'demo', 'carto', 'carto-dev', 'www'];
+                if (count($exploded) > 2 && !in_array($subdomain, $reservedDomains)) $dbName = $subdomain;
+            }
+        }     
+        $this->config->setDefaultDB($dbName);
+        
         $this->eventManager = $eventManager ?: new EventManager();
         $this->connection = $conn ?: new Connection(null, array(), $this->config, $this->eventManager);
 
