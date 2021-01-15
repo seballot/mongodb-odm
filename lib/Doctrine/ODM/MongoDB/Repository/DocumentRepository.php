@@ -66,6 +66,11 @@ class DocumentRepository implements ObjectRepository, Selectable
     {
         return $this->dm->createQueryBuilder($this->documentName);
     }
+    
+    public function query($documentName)
+    {
+        return $this->dm->query($documentName);
+    }
 
     /**
      * Creates a new Aggregation\Builder instance that is prepopulated for this document name.
@@ -73,6 +78,11 @@ class DocumentRepository implements ObjectRepository, Selectable
     public function createAggregationBuilder() : AggregationBuilder
     {
         return $this->dm->createAggregationBuilder($this->documentName);
+    }
+    
+    public function aggregate($documentName)
+    {
+        return $this->dm->aggregate($documentName);
     }
 
     /**
