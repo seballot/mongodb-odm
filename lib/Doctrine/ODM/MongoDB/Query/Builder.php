@@ -128,6 +128,58 @@ class Builder
     {
         $this->expr = clone $this->expr;
     }
+    
+    /* GoGoCarto Custom Code */
+    public function getArray()
+    {
+        $result = $this->getCursor()->toArray();
+        if (!empty($this->query['select'])) {
+            $removeId = !in_array('_id', $this->query['select']);
+            $result = array_map(function($e) use ($removeId) {
+                if ($removeId) unset($e['_id']);
+                if (count($e) == 1) $e = array_pop($e);
+                return $e;                
+            }, $result);
+        }
+        return $result;
+    }
+    
+    public function execute()
+    {
+        return $this->getQuery()->execute();
+    }
+    
+    public function getCount()
+    {
+        return $this->count()->execute();
+    }
+    
+    public function getIds()
+    {
+        return array_keys($this->select('id')->getArray());
+    }
+
+    public function getOne()
+    {
+        return $this->getQuery()->getSingleResult();
+    }
+
+    public function getCursor()
+    {
+        $hydrate = true;
+        if (!empty($this->query['select'])) {
+            $hydrate = false;
+        }
+        $result = $this->hydrate($hydrate)->getQuery()->execute();
+        
+        return $result;
+    }
+    public function batchRemove()
+    {
+        $this->dm->batchRemove($this->getQuery()->execute());
+    }
+    /* End GoGoCarto Custom Code */
+    
 
     /**
      * Add one or more $and clauses to the current query.

@@ -147,6 +147,69 @@ class DocumentManager implements ObjectManager
      * @var FilterCollection
      */
     private $filterCollection;
+    
+   /* GoGoCarto Custom code */
+    private $gogoConfig;
+    
+    public function getGoGoConfig($forceRefresh = false)
+    {
+        if (!$forceRefresh && $this->gogoConfig) return $this->gogoConfig;
+        $this->gogoConfig = $this->get('Configuration')->findConfiguration();
+        return $this->gogoConfig;
+    }
+
+    public function get($documentName)
+    {
+        return $this->getRepository('App\Document\\' . $documentName);
+    }
+
+    public function query($documentName)
+    {
+        return $this->createQueryBuilder('App\Document\\' . $documentName);
+    }
+    
+    public function aggregate($documentName)
+    {
+        return $this->createAggregationBuilder('App\Document\\' . $documentName);
+    }
+    
+    public function getChangeSet($document)
+    {
+        $uow = $this->getUnitOfWork();
+        $uow->computeChangeSets();
+        return $uow->getDocumentChangeSet($document);
+    }
+    
+    public function getDB() {
+        $mongo = $this->getConnection()->getMongoClient();
+        return $mongo->selectDB($this->getConfiguration()->getDefaultDB());
+    }
+
+    public function getCollection($collectionName) {
+        $mongo = $this->getConnection()->getMongoClient();
+        $db = $mongo->selectDB($this->getConfiguration()->getDefaultDB());
+        return $db->selectCollection($collectionName);
+    }
+    /**
+     * Remove documents  using Doctrine so it trigger all lifecyle hooks
+     * Be careful, this method calls $dm->clear() so you need to persist again
+     * all current documents
+     */
+    public function batchRemove($cursor)
+    {
+        $i = 0;
+        foreach ($cursor as $object) {
+            $this->remove($object);
+
+            if (0 === (++$i % 100)) {
+                $this->flush();
+                $this->clear();
+            }
+        }
+        $this->flush();
+        $this->clear();
+    }
+    /* end Custom code */
 
     /** @var ClassNameResolver */
     private $classNameResolver;
@@ -162,7 +225,7 @@ class DocumentManager implements ObjectManager
     {
         $this->config = $config ?: new Configuration();
         
-        // CUSTOM change for gogocarto
+        /* CUSTOM GOGOCARTO CODE */
         // We use a nice hack, in doctrine_mongodb.yaml we are setting the default_database as follow
         // "use_as_saas=true/name_of_the_database"
         // if used as saas, the db name is changed based on the url
@@ -179,6 +242,7 @@ class DocumentManager implements ObjectManager
             }
         }     
         $this->config->setDefaultDB($dbName);
+        /* END GOGOCARTO CODE */
         
         $this->eventManager = $eventManager ?: new EventManager();
         $this->client       = $client ?: new Client(
