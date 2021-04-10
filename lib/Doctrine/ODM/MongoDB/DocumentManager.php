@@ -188,7 +188,9 @@ class DocumentManager implements ObjectManager
     {
         $i = 0;
         foreach ($cursor as $object) {
-            $this->remove($object);
+            // Do not raise error if a document is not found through a relation
+            try { $this->remove($object); }
+            catch (DocumentNotFoundException $e) {}
 
             if (0 === (++$i % 100)) {
                 $this->flush();
