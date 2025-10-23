@@ -119,6 +119,67 @@ class Builder
         $this->expr = clone $this->expr;
     }
 
+    /* GoGoCarto Custom Code */
+    // Return associative array with element IDs as keys
+    // The value depend on the query
+    // $dm->query('Element')->getArray();
+    // => [ID => ElementObject(), ID => ElementObject()]
+    // $dm->query('Element')->select('name')->getArray();
+    // => [ID => "test", ID => "test2"]
+    // $dm->query('Element')->select('name', 'description')->getArray();
+    // => [ID => ["name" => "test", "description" => "desc1"], ID => ["name" => "test2", "description" => "desc2"]]
+    public function getArray()
+    {
+        $result = [];
+        if (empty($this->query['select'])) {
+            $array = $this->getQuery()->execute();
+            // array of objects
+            foreach ($array as $object) {
+                $result[$object->getId()] = $object;
+            }
+        } else {
+            // array of array
+            $array = $this->hydrate(false)->getQuery()->execute();
+            foreach ($array as $item) {
+                $copy = $item;
+                unset($copy['_id']);
+                if (1 == \count($copy)) {
+                    $copy = array_pop($copy);
+                } // transform [name => "test"] to "test"
+                $result[$item['_id']] = $copy;
+            }
+        }
+
+        return $result;
+    }
+
+    public function execute()
+    {
+        return $this->getQuery()->execute();
+    }
+
+    public function getCount()
+    {
+        return $this->count()->execute();
+    }
+
+    public function getIds()
+    {
+        return array_keys($this->select('id')->getArray());
+    }
+
+    public function getOne()
+    {
+        return $this->getQuery()->getSingleResult();
+    }
+
+    public function batchRemove()
+    {
+        $this->dm->batchRemove($this->getQuery()->execute());
+    }
+    /* End GoGoCarto Custom Code */
+
+
     /**
      * Add one or more $and clauses to the current query.
      *
@@ -690,7 +751,7 @@ class Builder
                 $this->hydrate && $this->class->inheritanceType === ClassMetadata::INHERITANCE_TYPE_SINGLE_COLLECTION
                 && ! isset($query['select'][$this->class->discriminatorField])
             ) {
-                $includeMode = 0 < count(array_filter($query['select'], static fn ($mode) => $mode === 1));
+                $includeMode = 0 < count(array_filter($query['select'], static fn($mode) => $mode === 1));
                 if ($includeMode) {
                     $query['select'][$this->class->discriminatorField] = 1;
                 }
